@@ -24,6 +24,16 @@ class PipeTree
         }
         
     }
+
+    public AddBranch(angle:number, length:number):PipeTree{
+        var rotMatrix = Matrix.RotationAxis(Axis.Y, angle);
+        
+        var branch = new PipeTree(this,this.point.add(Vector3.TransformNormal(this.last_direction, rotMatrix).scale(length)));
+        this.branches.push(branch);
+        return branch;
+    }
+
+
     public Straight(length:number, elevation:number):PipeTree{
         var newDirection:Vector3;
         if(elevation!=0){
@@ -67,7 +77,7 @@ class PipeTree
         const vec_z = new Vector3(0,0,1);
         const vec_y = new Vector3(0,1,0);
 
-        const c1 = this.branches.length>0?this.branches[0].point.subtract(this.point).normalize():this.point.subtract(this.previous.point).normalize();
+        const c1 = this.branches.length===1?this.branches[0].point.subtract(this.point).normalize():this.point.subtract(this.previous.point).normalize();
         const c2 = vec_y;            
         const cross = c1.cross(c2).normalize().scale(0.5);
 
@@ -76,24 +86,29 @@ class PipeTree
     }
 
 
-    public static GeneratePipeHelper(tree:PipeTree, meshes:Array<Mesh>, scene:Scene, leftPoints:Array<Vector3>, rightPoints:Array<Vector3>)
+    public static GeneratePipeHelper(root:PipeTree, meshes:Array<Mesh>, scene:Scene, leftPoints:Array<Vector3>, rightPoints:Array<Vector3>)
     {
-        if(tree.branches.length <= 1){
-            var points = tree.GetTrackPoints();
+        //if(tree.branches.length <= 1){
+            var points = root.GetTrackPoints();
             leftPoints.push(points[0]);
             rightPoints.push(points[1]);
-        }
-        if (tree.branches.length !== 1){
+        //}
+        if (root.branches.length !== 1){
             if(leftPoints.length>1 && rightPoints.length>1){
                 meshes.push(MeshBuilder.CreateTube("left",{path:leftPoints, radius:0.2}, scene));
                 meshes.push(MeshBuilder.CreateTube("right",{path:rightPoints, radius:0.2}, scene));
             }
-            leftPoints = [];
-            rightPoints = [];
+            //leftPoints = [];
+            //rightPoints = [];
         }
 
-        for(var tree of tree.branches)
+        for(var tree of root.branches)
         {
+            if (root.branches.length !== 1)
+            {
+                leftPoints = [points[0]];
+                rightPoints = [points[1]];
+            }
             PipeTree.GeneratePipeHelper(tree, meshes, scene, leftPoints, rightPoints);
         }
     }
@@ -102,100 +117,6 @@ class PipeTree
     {
         PipeTree.GeneratePipeHelper(tree,meshes,scene,[],[]);
     }
-
-    // public static GeneratePipeMeshes(root:PipeTree, scene:Scene):Array<Mesh>{
-    //     var meshes:Array<Mesh> = [];
-    //     var points = root.GetTrackPoints();
-    //     for(var tree of root.branches)
-    //     {
-    //         const next_points = tree.GetTrackPoints();
-    //         meshes.push(MeshBuilder.CreateTube("left",{path:[points[0],next_points[0]], radius:0.2}, scene));
-    //         meshes.push(MeshBuilder.CreateTube("right",{path:[points[1],next_points[1]], radius:0.2}, scene));
-    //         this.GeneratePipeMeshesHelper(tree, meshes, scene);
-    //     }
-    //     return meshes;
-    // }
-}
-
-class PipeTrackBuilder
-{
-    public turn_step:number;
-    public sections:number;
-    public points:Array<Vector3>;
-    constructor(resolution:number, start:Vector3, direction:Vector3){
-        this.turn_step = Math.PI*2/resolution;
-        this.sections = resolution;
-        //start = start.cross(start.add(heading)).normalize().scale(3);
-        this.points = [start, start.add(direction)];
-    }
-
-    get LastPoint(){
-        return this.points[this.points.length-1];
-    }
-
-    get LastDirection(){
-        return this.LastPoint.subtract(this.FromBack(1)).clone().normalize();
-    }
-
-    GenerateTrack(){
-        var left = [];
-        var right = [];
-        const vec_z = new Vector3(0,0,1);
-        const vec_y = new Vector3(0,1,0);
-
-        this.points.forEach((p,i)=>{
-            const c1 = (i<this.points.length-2)?this.points[i+1].subtract(p): p.subtract(this.points[i-1]);
-            const c2 = vec_y;            
-            const cross = c1.cross(c2).normalize().scale(0.5);
-            left.push(p.subtract(cross));
-            right.push(p.add(cross));
-        });
-
-
-        return [left,right];
-    }
-
-    FromBack(count:number){
-        return this.points[this.points.length-count-1];
-    }
-
-    Straight(length:number, elevation:number){
-        var direction:Vector3;
-        if(this.points.length>1)
-        {
-            direction = this.LastPoint.subtract(this.FromBack(1));
-            direction.normalize();
-        }
-        else{
-            direction = new Vector3(0,0,1);
-        }
-        if(elevation!=0){
-            const c2 = new Vector3(0,1,0);            
-            const cross = direction.cross(c2).normalize();
-            var rotMatrix = Matrix.RotationAxis(cross, elevation);
-            direction = Vector3.TransformNormal(direction, rotMatrix);
-        }
-
-        this.points.push(this.LastPoint.add(direction.scale(length)));
-    }
-
-    Turn(angle:number, radius:number, direction:number)
-    {
-        const section_size =(Math.PI*radius*2)/this.sections;
-        const startVector = this.LastPoint.add(this.LastDirection.scale(section_size));
-        console.log(startVector);
-        var rotMatrix = Matrix.RotationAxis(Axis.Y, this.turn_step*direction);
-        for(var theta=0; theta<angle-this.turn_step; theta+=this.turn_step)
-        {
-            this.points.push(this.LastPoint.add(Vector3.TransformNormal(this.LastDirection, rotMatrix).scale(section_size)));
-        }
-
-
-    }
-
-
-
-    
 }
 
 
@@ -204,7 +125,6 @@ class Environment
     public ground: Mesh;
     public pipe1: Mesh;
     public pipe2: Mesh;
-    public pipeBuilder:PipeTrackBuilder;
     public pipeTree:PipeTree;
     
     constructor(scene:Scene){
@@ -227,6 +147,21 @@ class Environment
         pipetree = pipetree.Turn(Math.PI/2, 5, -1);
         pipetree = pipetree.Straight(5,0);
         pipetree = pipetree.Straight(5,0);
+        var p1 = pipetree.AddBranch(Math.PI/8,5);
+        var p2 = pipetree.AddBranch(-Math.PI/8,5);
+        p1 = p1.Straight(10,0.5);
+        p1 = p1.Straight(1,-0.5);
+        p1 = p1.Turn(Math.PI/2, 5, -1);
+        p1 = p1.Straight(5,0);
+        p1 = p1.Turn(Math.PI/2, 5, -1);
+        p1 = p1.Straight(10,0.5);
+
+        p2 = p2.Straight(10,-0.5);
+        p2 = p2.Straight(1,0.5);
+        p2 = p2.Turn(Math.PI/2, 5, 1);
+        p2 = p2.Turn(Math.PI/2, 5, -1);
+        p2 = p2.Turn(Math.PI/2, 5, 1);
+        p2 = p2.Turn(Math.PI/2, 5, -1);
 
         var meshes:Array<Mesh> = [];
         PipeTree.GeneratePipeMeshes(this.pipeTree,meshes,scene);
@@ -276,7 +211,13 @@ class App {
             scene.registerBeforeRender(()=>{
             ship.position.addInPlace(heading);
             if(ship.position.subtract(target).lengthSquared()<shipSpeed){
-                currentPipe = currentPipe.branches[0];
+                if(currentPipe.branches.length>1){
+                    currentPipe = currentPipe.branches[Math.round(Math.random()*(currentPipe.branches.length-1))];
+                }
+                else
+                {
+                    currentPipe = currentPipe.branches[0];
+                }
                 if(currentPipe===undefined) currentPipe = environment.pipeTree;
                 target = currentPipe.point;
                 console.log(target);
