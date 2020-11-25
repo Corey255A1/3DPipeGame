@@ -1,7 +1,121 @@
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 import "@babylonjs/loaders/glTF";
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, SceneLoader, FollowCamera, Material, StandardMaterial, Color3, Matrix, Axis } from "@babylonjs/core";
+import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, SceneLoader, FollowCamera, Material, StandardMaterial, Color3, Matrix, Axis, CSG } from "@babylonjs/core";
+
+class PipeTree
+{
+    public branches:Array<PipeTree>;
+    public point:Vector3;
+    public previous:PipeTree;
+    public last_direction:Vector3;
+    //public next_direction:Vector3;
+    public static TurnSections:number = 25;
+    public static TurnStep:number = Math.PI*2/PipeTree.TurnSections;
+    constructor(previous:PipeTree, point:Vector3){
+
+        this.branches = [];
+        this.previous = previous;
+        this.point = point;
+        if(this.previous!==undefined){
+            this.last_direction = this.point.subtract(this.previous.point).normalize();
+            //this.previous.next_direction = this.last_direction;
+            //console.log(this.previous);
+        }
+        
+    }
+    public Straight(length:number, elevation:number):PipeTree{
+        var newDirection:Vector3;
+        if(elevation!=0){
+            const c2 = new Vector3(0,1,0);            
+            const cross = this.last_direction.cross(c2).normalize();
+            var rotMatrix = Matrix.RotationAxis(cross, elevation);
+            newDirection = Vector3.TransformNormal(this.last_direction, rotMatrix);
+        }
+        else{
+            newDirection = this.last_direction;
+        }
+        const newpipe = new PipeTree(this, (this.point.add(newDirection.scale(length))));
+        if(this.branches.length == 0){
+            this.branches.push(newpipe);
+        }else{
+            this.branches[0] = newpipe;
+        }
+        return newpipe;
+    }
+
+    public Turn(angle:number, radius:number, direction:number):PipeTree
+    {
+        const section_size =(Math.PI*radius*2)/PipeTree.TurnSections;
+        const startVector = this.last_direction.scale(section_size);
+        console.log(startVector);
+        var rotMatrix = Matrix.RotationAxis(Axis.Y, PipeTree.TurnStep*direction);
+        var previousPipe:PipeTree = this;
+        for(var theta=0; theta<angle-PipeTree.TurnStep; theta+=PipeTree.TurnStep)
+        {
+            var newPipe:PipeTree = new PipeTree(previousPipe, previousPipe.point.add(Vector3.TransformNormal(previousPipe.last_direction, rotMatrix).scale(section_size)))
+            previousPipe.branches.push(newPipe);
+            previousPipe = newPipe;
+        }
+
+        return previousPipe;
+    }
+
+    public GetTrackPoints():Array<Vector3>{
+        var left = [];
+        var right = [];
+        const vec_z = new Vector3(0,0,1);
+        const vec_y = new Vector3(0,1,0);
+
+        const c1 = this.branches.length>0?this.branches[0].point.subtract(this.point).normalize():this.point.subtract(this.previous.point).normalize();
+        const c2 = vec_y;            
+        const cross = c1.cross(c2).normalize().scale(0.5);
+
+        return [this.point.subtract(cross),this.point.add(cross)];
+
+    }
+
+
+    public static GeneratePipeHelper(tree:PipeTree, meshes:Array<Mesh>, scene:Scene, leftPoints:Array<Vector3>, rightPoints:Array<Vector3>)
+    {
+        if(tree.branches.length <= 1){
+            var points = tree.GetTrackPoints();
+            leftPoints.push(points[0]);
+            rightPoints.push(points[1]);
+        }
+        if (tree.branches.length !== 1){
+            if(leftPoints.length>1 && rightPoints.length>1){
+                meshes.push(MeshBuilder.CreateTube("left",{path:leftPoints, radius:0.2}, scene));
+                meshes.push(MeshBuilder.CreateTube("right",{path:rightPoints, radius:0.2}, scene));
+            }
+            leftPoints = [];
+            rightPoints = [];
+        }
+
+        for(var tree of tree.branches)
+        {
+            PipeTree.GeneratePipeHelper(tree, meshes, scene, leftPoints, rightPoints);
+        }
+    }
+
+    public static GeneratePipeMeshes(tree:PipeTree, meshes:Array<Mesh>, scene:Scene)
+    {
+        PipeTree.GeneratePipeHelper(tree,meshes,scene,[],[]);
+    }
+
+    // public static GeneratePipeMeshes(root:PipeTree, scene:Scene):Array<Mesh>{
+    //     var meshes:Array<Mesh> = [];
+    //     var points = root.GetTrackPoints();
+    //     for(var tree of root.branches)
+    //     {
+    //         const next_points = tree.GetTrackPoints();
+    //         meshes.push(MeshBuilder.CreateTube("left",{path:[points[0],next_points[0]], radius:0.2}, scene));
+    //         meshes.push(MeshBuilder.CreateTube("right",{path:[points[1],next_points[1]], radius:0.2}, scene));
+    //         this.GeneratePipeMeshesHelper(tree, meshes, scene);
+    //     }
+    //     return meshes;
+    // }
+}
 
 class PipeTrackBuilder
 {
@@ -78,6 +192,10 @@ class PipeTrackBuilder
 
 
     }
+
+
+
+    
 }
 
 
@@ -87,6 +205,8 @@ class Environment
     public pipe1: Mesh;
     public pipe2: Mesh;
     public pipeBuilder:PipeTrackBuilder;
+    public pipeTree:PipeTree;
+    
     constructor(scene:Scene){
         this.ground = MeshBuilder.CreatePlane("ground", {width:50, height:2000}, scene);
         this.ground.position.z = 990;
@@ -96,40 +216,22 @@ class Environment
         this.ground.material = groundMat;
 
         //var pipePoints: Array<Vector3> = [new Vector3(0,0,0), new Vector3(0,1,0), new Vector3(0,2,1), new Vector3(0,2,2), new Vector3(0,2,700)];
-        this.pipeBuilder = new PipeTrackBuilder(25, new Vector3(0,0,0), new Vector3(0,0,2));
-        this.pipeBuilder.Straight(15,0.5);
-        this.pipeBuilder.Straight(3,-0.5);
-        this.pipeBuilder.Turn(Math.PI/2, 5, 1);
-        this.pipeBuilder.Straight(3,0);
-        this.pipeBuilder.Turn(Math.PI/2, 5, -1);
-        this.pipeBuilder.Straight(5,0);
-        this.pipeBuilder.Turn(Math.PI/2, 5, -1);
-        this.pipeBuilder.Straight(5,0);
-        this.pipeBuilder.Turn(Math.PI/2, 5, 1);
-        this.pipeBuilder.Straight(25,-0.1);
-        this.pipeBuilder.Straight(1,0.1);
-        this.pipeBuilder.Turn(Math.PI/2, 5, 1);
-        this.pipeBuilder.Turn(Math.PI/2, 5, -1);
-        this.pipeBuilder.Turn(Math.PI/4, 5, 1);
-        this.pipeBuilder.Turn(Math.PI/4, 5, -1);
-        this.pipeBuilder.Turn(Math.PI/4, 5, 1);
-        this.pipeBuilder.Turn(Math.PI/4, 5, -1);
-        this.pipeBuilder.Turn(Math.PI/4, 5, 1);
-        this.pipeBuilder.Turn(Math.PI/4, 5, -1);
-        // this.pipeBuilder.Straight(3);
-        // this.pipeBuilder.Turn(Math.PI/2, 10, new Vector3(0,0,-1));
-        // this.pipeBuilder.Straight(10);
-        // this.pipeBuilder.Turn(Math.PI/2, 10, new Vector3(1,0,0));
-        // this.pipeBuilder.Straight(10);
-        // this.pipeBuilder.Turn(Math.PI/2, 10, new Vector3(-1,0,0));
-        // this.pipeBuilder.Straight(10);
-        // this.pipeBuilder.Turn(Math.PI/2, 10, new Vector3(-1,0,0));
-        var track = this.pipeBuilder.GenerateTrack();
-        console.log(track[0]);
-        console.log(track[1]);
-        this.pipe1 = MeshBuilder.CreateTube("tubural1",{path:track[0], radius:0.2}, scene);
-        this.pipe2 = MeshBuilder.CreateTube("tubural2",{path:track[1], radius:0.2}, scene);
+
+        this.pipeTree = new PipeTree(undefined, new Vector3(0,0,0))
+        var pipetree = new PipeTree(this.pipeTree, new Vector3(0,0,2));
+        this.pipeTree.branches.push(pipetree);
+
+        pipetree = pipetree.Straight(15,0.5);
+        pipetree = pipetree.Straight(5,-0.5);
+        pipetree = pipetree.Turn(Math.PI/2, 5, 1);
+        pipetree = pipetree.Turn(Math.PI/2, 5, -1);
+        pipetree = pipetree.Straight(5,0);
+        pipetree = pipetree.Straight(5,0);
+
+        var meshes:Array<Mesh> = [];
+        PipeTree.GeneratePipeMeshes(this.pipeTree,meshes,scene);
         
+        var pipeTrack:Mesh = Mesh.MergeMeshes(meshes, true);        
     }
 }
 
@@ -158,30 +260,51 @@ class App {
 
         var light1: HemisphericLight = new HemisphericLight("light1", new Vector3(1, 1, 0), scene);
         var sphere: Mesh = MeshBuilder.CreateSphere("sphere", { diameter: 1 }, scene);
-        //SceneLoader.Append("./","Box.glb",scene);
-
-        camera2.lockedTarget = sphere;
-        var lastposition = sphere.position.clone();
-        var sectionIdx=0;
-        var target = environment.pipeBuilder.points[sectionIdx];
-        sphere.lookAt(target);
-        //var north=new Vector3(0,0,1);
-        const sphereSpeed = 0.5;
-        var heading = sphere.position.subtract(target).normalize().scale(-sphereSpeed);
-        sphere.onBeforeDraw = ()=>{
-            sphere.position.addInPlace(heading);
-            if(sphere.position.subtract(target).lengthSquared()<sphereSpeed){
-                sectionIdx++;
-                if(sectionIdx>=environment.pipeBuilder.points.length) sectionIdx=0;
-                target = environment.pipeBuilder.points[sectionIdx];
+        SceneLoader.ImportMesh(null, "./", "Ship.glb",scene,(meshes)=>{
+            const ship:Mesh = meshes[0];
+            const shipSpeed = 0.5;
+            var lastposition = ship.position.clone();
+            //var sectionIdx=0;
+            var currentPipe = environment.pipeTree
+           // var target = environment.pipeBuilder.points[sectionIdx];
+            var target = currentPipe.point;
+            camera2.lockedTarget = ship;
+            console.log("LOADED")
+            var heading = ship.position.subtract(target).normalize().scale(-shipSpeed);
+            ship.lookAt(target);
+            console.log(ship)
+            scene.registerBeforeRender(()=>{
+            ship.position.addInPlace(heading);
+            if(ship.position.subtract(target).lengthSquared()<shipSpeed){
+                currentPipe = currentPipe.branches[0];
+                if(currentPipe===undefined) currentPipe = environment.pipeTree;
+                target = currentPipe.point;
                 console.log(target);
-                sphere.lookAt(target);
-                heading = sphere.position.subtract(target).normalize().scale(-sphereSpeed);
+                ship.lookAt(target);
+                heading = ship.position.subtract(target).normalize().scale(-shipSpeed);
                 console.log(heading);
-                if(sectionIdx>=environment.pipeBuilder.points.length){
-                    sectionIdx=-1;
-                }
             }
+            });
+
+        });
+        //SceneLoader.Append("./","Ship.glb",scene);
+
+        //var north=new Vector3(0,0,1);        
+        sphere.onBeforeDraw = ()=>{
+            return;
+            // sphere.position.addInPlace(heading);
+            // if(sphere.position.subtract(target).lengthSquared()<sphereSpeed){
+            //     sectionIdx++;
+            //     if(sectionIdx>=environment.pipeBuilder.points.length) sectionIdx=0;
+            //     target = environment.pipeBuilder.points[sectionIdx];
+            //     console.log(target);
+            //     sphere.lookAt(target);
+            //     heading = sphere.position.subtract(target).normalize().scale(-sphereSpeed);
+            //     console.log(heading);
+            //     if(sectionIdx>=environment.pipeBuilder.points.length){
+            //         sectionIdx=-1;
+            //     }
+            // }
         }
 
         // hide/show the Inspector
