@@ -1,7 +1,8 @@
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 import "@babylonjs/loaders/glTF";
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, SceneLoader, FollowCamera, Material, StandardMaterial, Color3, Matrix, Axis, CSG } from "@babylonjs/core";
+import {AdvancedDynamicTexture, Button} from "@babylonjs/gui";
+import {  Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, SceneLoader, FollowCamera, Material, StandardMaterial, Color3, Matrix, Axis, CSG, Texture, CubeTexture, FreeCamera } from "@babylonjs/core";
 
 class PipeTree
 {
@@ -126,14 +127,26 @@ class Environment
     public pipe1: Mesh;
     public pipe2: Mesh;
     public pipeTree:PipeTree;
-    
+    public skybox: Mesh;
     constructor(scene:Scene){
-        this.ground = MeshBuilder.CreatePlane("ground", {width:50, height:2000}, scene);
-        this.ground.position.z = 990;
+        this.ground = MeshBuilder.CreatePlane("ground", {width:2000, height:2000}, scene);
+        this.ground.position.z = 0;
         this.ground.rotate(new Vector3(1,0,0),Math.PI/2);
         var groundMat:StandardMaterial = new StandardMaterial("groundMat", scene);
         groundMat.diffuseColor = new Color3(0,1,0);
         this.ground.material = groundMat;
+
+        this.skybox = MeshBuilder.CreateBox("skyBox", {size:2000}, scene);
+        const skyboxMaterial = new StandardMaterial("skyBox", scene);
+        skyboxMaterial.backFaceCulling = false;
+        skyboxMaterial.reflectionTexture = new CubeTexture("imgs/skybox", scene);
+        skyboxMaterial.reflectionTexture.coordinatesMode = Texture.SKYBOX_MODE;
+        skyboxMaterial.diffuseColor = new Color3(0, 0, 0);
+        skyboxMaterial.specularColor = new Color3(0, 0, 0);
+        this.skybox.material = skyboxMaterial;
+
+
+
 
         //var pipePoints: Array<Vector3> = [new Vector3(0,0,0), new Vector3(0,1,0), new Vector3(0,2,1), new Vector3(0,2,2), new Vector3(0,2,700)];
 
@@ -147,13 +160,17 @@ class Environment
         pipetree = pipetree.Turn(Math.PI/2, 5, -1);
         pipetree = pipetree.Straight(5,0);
         pipetree = pipetree.Straight(5,0);
-        var p1 = pipetree.AddBranch(Math.PI/8,5);
-        var p2 = pipetree.AddBranch(-Math.PI/8,5);
+        var p1 = pipetree.AddBranch(Math.PI/4,5);
+        var p2 = pipetree.AddBranch(-Math.PI/4,5);
+
+        var p3 = pipetree.AddBranch(Math.PI/8,5);
+        var p4 = pipetree.AddBranch(-Math.PI/8,5);
+
         p1 = p1.Straight(10,0.5);
         p1 = p1.Straight(1,-0.5);
-        p1 = p1.Turn(Math.PI/2, 5, -1);
+        p1 = p1.Turn(Math.PI/4, 5, -1);
         p1 = p1.Straight(5,0);
-        p1 = p1.Turn(Math.PI/2, 5, -1);
+        p1 = p1.Turn(Math.PI/4, 5, -1);
         p1 = p1.Straight(10,0.5);
 
         p2 = p2.Straight(10,-0.5);
@@ -162,6 +179,20 @@ class Environment
         p2 = p2.Turn(Math.PI/2, 5, -1);
         p2 = p2.Turn(Math.PI/2, 5, 1);
         p2 = p2.Turn(Math.PI/2, 5, -1);
+
+        p3 = p3.Straight(10,0.5);
+        p3 = p3.Straight(1,-0.5);
+        p3 = p3.Turn(Math.PI/2, 5, -1);
+        p3 = p3.Straight(5,0);
+        p3 = p3.Turn(Math.PI/2, 5, -1);
+        p3 = p3.Straight(10,0.5);
+
+        p4 = p4.Straight(10,-0.5);
+        p4 = p4.Straight(1,0.5);
+        p4 = p4.Turn(Math.PI/2, 5, 1);
+        p4 = p4.Turn(Math.PI/2, 5, -1);
+        p4 = p4.Turn(Math.PI/2, 5, 1);
+        p4 = p4.Turn(Math.PI/2, 5, -1);
 
         var meshes:Array<Mesh> = [];
         PipeTree.GeneratePipeMeshes(this.pipeTree,meshes,scene);
@@ -183,48 +214,69 @@ class App {
         var engine = new Engine(canvas, true);
         var scene = new Scene(engine);
 
-        var camera: ArcRotateCamera = new ArcRotateCamera("Camera", Math.PI / 2, Math.PI / 2, 2, Vector3.Zero(), scene);
-        var camera2: FollowCamera = new FollowCamera("FollowCamera", new Vector3(0,10,0), scene);
+        //var camera: ArcRotateCamera = new ArcRotateCamera("Camera", Math.PI / 2, Math.PI / 2, 15, Vector3.Zero(), scene);
+        var camera: FreeCamera = new FreeCamera("thirdperson",new Vector3(0,1,-3), scene);
+        //var camera2: FollowCamera = new FollowCamera("FollowCamera", new Vector3(0,10,0), scene);
         var environment: Environment = new Environment(scene);
-        scene.activeCamera = camera2;
-        camera2.heightOffset = 10;
-        camera2.attachControl(true);
+        scene.activeCamera = camera;
+        //camera2.heightOffset = 10;
+        //camera2.attachControl(true);
         // camera.position.set(1,1,1);
+        var ship_paused:boolean = true;
+        var gu_window = AdvancedDynamicTexture.CreateFullscreenUI("options");
         
-        
+        var button1 = Button.CreateSimpleButton("but1", "Click Me");
+        button1.width = "150px"
+        button1.height = "40px";
+        button1.color = "white";
+        button1.cornerRadius = 20;
+        button1.background = "green";
+        button1.onPointerUpObservable.add(function() {
+            ship_paused = false;
+        });
+        gu_window.addControl(button1); 
 
         var light1: HemisphericLight = new HemisphericLight("light1", new Vector3(1, 1, 0), scene);
         var sphere: Mesh = MeshBuilder.CreateSphere("sphere", { diameter: 1 }, scene);
         SceneLoader.ImportMesh(null, "./", "Ship.glb",scene,(meshes)=>{
             const ship:Mesh = meshes[0];
             const shipSpeed = 0.5;
+            ship.position = new Vector3(0,0,-5);
             var lastposition = ship.position.clone();
             //var sectionIdx=0;
             var currentPipe = environment.pipeTree
            // var target = environment.pipeBuilder.points[sectionIdx];
             var target = currentPipe.point;
-            camera2.lockedTarget = ship;
+            const cameraoffset: Vector3 = new Vector3(0,10,0);
             console.log("LOADED")
             var heading = ship.position.subtract(target).normalize().scale(-shipSpeed);
             ship.lookAt(target);
             console.log(ship)
+            
+
+            
+
             scene.registerBeforeRender(()=>{
-            ship.position.addInPlace(heading);
-            if(ship.position.subtract(target).lengthSquared()<shipSpeed){
-                if(currentPipe.branches.length>1){
-                    currentPipe = currentPipe.branches[Math.round(Math.random()*(currentPipe.branches.length-1))];
+                Vector3.LerpToRef(camera.position, (ship.position.subtract(ship.forward.scale(-20)).add(cameraoffset)), 0.05, camera.position );
+                camera.setTarget(ship.position);
+                if(!ship_paused){
+                    ship.position.addInPlace(heading);
+                    if(ship.position.subtract(target).lengthSquared()<shipSpeed){
+                        if(currentPipe.branches.length>1){
+                            currentPipe = currentPipe.branches[Math.round(Math.random()*(currentPipe.branches.length-1))];
+                        }
+                        else
+                        {
+                            currentPipe = currentPipe.branches[0];
+                        }
+                        if(currentPipe===undefined) currentPipe = environment.pipeTree;
+                        target = currentPipe.point;
+                        //console.log(target);
+                        ship.lookAt(target);
+                        heading = ship.position.subtract(target).normalize().scale(-shipSpeed);
+                        //console.log(heading);
+                    }
                 }
-                else
-                {
-                    currentPipe = currentPipe.branches[0];
-                }
-                if(currentPipe===undefined) currentPipe = environment.pipeTree;
-                target = currentPipe.point;
-                console.log(target);
-                ship.lookAt(target);
-                heading = ship.position.subtract(target).normalize().scale(-shipSpeed);
-                console.log(heading);
-            }
             });
 
         });
