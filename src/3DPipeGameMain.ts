@@ -160,11 +160,14 @@ class Environment
         pipetree = pipetree.Turn(Math.PI/2, 5, -1);
         pipetree = pipetree.Straight(5,0);
         pipetree = pipetree.Straight(5,0);
-        var p1 = pipetree.AddBranch(Math.PI/4,5);
-        var p2 = pipetree.AddBranch(-Math.PI/4,5);
 
-        var p3 = pipetree.AddBranch(Math.PI/8,5);
+        var p2 = pipetree.AddBranch(-Math.PI/4,5);
         var p4 = pipetree.AddBranch(-Math.PI/8,5);
+        var p3 = pipetree.AddBranch(Math.PI/8,5);
+        var p1 = pipetree.AddBranch(Math.PI/4,5);      
+
+        
+        
 
         p1 = p1.Straight(10,0.5);
         p1 = p1.Straight(1,-0.5);
@@ -172,6 +175,23 @@ class Environment
         p1 = p1.Straight(5,0);
         p1 = p1.Turn(Math.PI/4, 5, -1);
         p1 = p1.Straight(10,0.5);
+
+        var p11 = p1.AddBranch(-Math.PI/4,5);
+        var p12 = p1.AddBranch(Math.PI/4,5); 
+
+
+        p11 = p11.Straight(10,-0.5);
+        p11 = p11.Turn(Math.PI/4, 5, -1);
+        p11 = p11.Straight(5,0);
+        p11 = p11.Turn(Math.PI/4, 5, -1);
+        p11 = p11.Straight(10,0.5);
+
+        p12 = p12.Straight(10,-0.5);
+        p12 = p12.Straight(1,0.5);
+        p12 = p12.Turn(Math.PI/2, 5, 1);
+        p12 = p12.Turn(Math.PI/2, 5, -1);
+        p12 = p12.Turn(Math.PI/2, 5, 1);
+        p12 = p12.Turn(Math.PI/2, 5, -1);
 
         p2 = p2.Straight(10,-0.5);
         p2 = p2.Straight(1,0.5);
@@ -223,18 +243,45 @@ class App {
         //camera2.attachControl(true);
         // camera.position.set(1,1,1);
         var ship_paused:boolean = true;
-        var gu_window = AdvancedDynamicTexture.CreateFullscreenUI("options");
+        var gui_window = AdvancedDynamicTexture.CreateFullscreenUI("options");
         
-        var button1 = Button.CreateSimpleButton("but1", "Click Me");
-        button1.width = "150px"
-        button1.height = "40px";
-        button1.color = "white";
-        button1.cornerRadius = 20;
-        button1.background = "green";
-        button1.onPointerUpObservable.add(function() {
+        var start_button = Button.CreateSimpleButton("start_button", "Start!");
+        start_button.width = "150px"
+        start_button.height = "40px";
+        start_button.color = "white";
+        start_button.cornerRadius = 20;
+        start_button.background = "green";
+        start_button.verticalAlignment = 1;
+        start_button.top = -40;
+        start_button.onPointerUpObservable.add(function() {
             ship_paused = false;
+            gui_window.removeControl(start_button);
         });
-        gu_window.addControl(button1); 
+        gui_window.addControl(start_button); 
+
+
+
+        const create_branch_options = function(count:number, callback:Function):Array<Button>{
+            var btns:Array<Button> = [];
+            for(let b=0; b<count; b++){
+                var option:string = String.fromCharCode(65+b);
+                var btn = Button.CreateSimpleButton(option, option);
+                btn.width = "150px"
+                btn.height = "40px";
+                btn.color = "white";
+                btn.cornerRadius = 20;
+                btn.background = "green";
+                btn.verticalAlignment = 1;
+                btn.top = -40;
+                btn.left = -155*(count-1)/2 + b*155;
+                btn.onPointerUpObservable.add(()=>{
+                    console.log(b);
+                    callback(btn, b, option);
+                });
+                btns.push(btn);
+            }
+            return btns;
+        }
 
         var light1: HemisphericLight = new HemisphericLight("light1", new Vector3(1, 1, 0), scene);
         var sphere: Mesh = MeshBuilder.CreateSphere("sphere", { diameter: 1 }, scene);
@@ -254,7 +301,12 @@ class App {
             console.log(ship)
             
 
-            
+            var currentBranch:number = -1;
+            var branch_buttons:Array<Button>;
+            const branch_callback = function(btn:Button, branch_number:number ,option:string){
+                currentBranch = branch_number;
+                ship_paused = false;                
+            }
 
             scene.registerBeforeRender(()=>{
                 Vector3.LerpToRef(camera.position, (ship.position.subtract(ship.forward.scale(-20)).add(cameraoffset)), 0.05, camera.position );
@@ -262,8 +314,20 @@ class App {
                 if(!ship_paused){
                     ship.position.addInPlace(heading);
                     if(ship.position.subtract(target).lengthSquared()<shipSpeed){
-                        if(currentPipe.branches.length>1){
-                            currentPipe = currentPipe.branches[Math.round(Math.random()*(currentPipe.branches.length-1))];
+                        if(currentPipe.branches.length>1 && currentBranch===-1){
+                            ship_paused = true;
+                            branch_buttons = create_branch_options(currentPipe.branches.length, branch_callback);
+                            branch_buttons.forEach(btn=>gui_window.addControl(btn)); 
+                            //currentPipe = currentPipe.branches[Math.round(Math.random()*(currentPipe.branches.length-1))];
+                        }
+                        else if(currentPipe.branches.length>1 && currentBranch!==-1)
+                        {
+                            currentPipe = currentPipe.branches[currentBranch];
+                            console.log(currentPipe);
+                            console.log(currentBranch);
+                            currentBranch = -1;
+                            branch_buttons.forEach(btn=>gui_window.removeControl(btn));
+                            branch_buttons = [];
                         }
                         else
                         {
