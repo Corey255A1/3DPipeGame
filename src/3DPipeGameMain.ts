@@ -34,6 +34,37 @@ class PipeTree
         return branch;
     }
 
+    public AddExisting(branch:PipeTree){
+        if(this.branches.length == 0){
+            this.branches.push(branch);
+        }else{
+            this.branches[0] = branch;
+        }
+    }
+
+    public GetPointStraight(length:number, elevation:number):Vector3{
+        var newDirection:Vector3;
+        if(elevation!=0){
+            const c2 = new Vector3(0,1,0);            
+            const cross = this.last_direction.cross(c2).normalize();
+            var rotMatrix = Matrix.RotationAxis(cross, elevation);
+            newDirection = Vector3.TransformNormal(this.last_direction, rotMatrix).scale(length);
+        }
+        else{
+            newDirection = this.last_direction.scale(length);
+        }
+        return (this.point.add(newDirection));
+    }
+
+    public PipeTo(vector:Vector3):PipeTree{
+        const newpipe = new PipeTree(this, vector);
+        if(this.branches.length == 0){
+            this.branches.push(newpipe);
+        }else{
+            this.branches[0] = newpipe;
+        }
+        return newpipe;
+    }
 
     public Straight(length:number, elevation:number):PipeTree{
         var newDirection:Vector3;
@@ -118,6 +149,44 @@ class PipeTree
     {
         PipeTree.GeneratePipeHelper(tree,meshes,scene,[],[]);
     }
+
+
+    public static GenerateTrack(root:PipeTree, sections:number):PipeTree{
+        let current_direction = 0;
+        let vec:Vector3;
+        let pipetree = root;
+        for(let p=0;p<sections;p++){            
+            const randir = Math.random();
+            if(randir>0.25){
+                const ran = Math.random();
+                let r = ran>0.30?0:ran>0.15?0.5:-0.5;
+                let dist = 5+Math.floor(Math.random()*5);
+                vec = pipetree.GetPointStraight(dist,(current_direction-r));
+                //just flatten it out if the point is going underground
+                if(vec.y<0){
+                    r = 0;
+                    vec = pipetree.GetPointStraight(dist,r);
+                }
+                pipetree = pipetree.PipeTo(vec);
+                current_direction = r;
+            }
+            else{
+                if(current_direction!==0){
+                    pipetree = pipetree.Straight(1,(current_direction));
+                    current_direction=0;
+                }
+                const ran = Math.random();
+                
+                pipetree = pipetree.Turn(Math.PI/2, 5, ran>0.5?1:-1);
+
+            }
+        }
+        if(current_direction!==0){
+            pipetree = pipetree.Straight(1,(current_direction));
+            current_direction=0;
+        }
+        return pipetree;
+    }
 }
 
 
@@ -151,68 +220,84 @@ class Environment
         //var pipePoints: Array<Vector3> = [new Vector3(0,0,0), new Vector3(0,1,0), new Vector3(0,2,1), new Vector3(0,2,2), new Vector3(0,2,700)];
 
         this.pipeTree = new PipeTree(undefined, new Vector3(0,0,0))
-        var pipetree = new PipeTree(this.pipeTree, new Vector3(0,0,2));
-        this.pipeTree.branches.push(pipetree);
+        var treebuilder = new PipeTree(this.pipeTree, new Vector3(0,0,2));
+        this.pipeTree.branches.push(treebuilder);
+        
+        treebuilder = PipeTree.GenerateTrack(treebuilder, 20);
 
-        pipetree = pipetree.Straight(15,0.5);
-        pipetree = pipetree.Straight(5,-0.5);
-        pipetree = pipetree.Turn(Math.PI/2, 5, 1);
-        pipetree = pipetree.Turn(Math.PI/2, 5, -1);
-        pipetree = pipetree.Straight(5,0);
-        pipetree = pipetree.Straight(5,0);
 
-        var p2 = pipetree.AddBranch(-Math.PI/4,5);
-        var p4 = pipetree.AddBranch(-Math.PI/8,5);
-        var p3 = pipetree.AddBranch(Math.PI/8,5);
-        var p1 = pipetree.AddBranch(Math.PI/4,5);      
 
+        // pipetree = pipetree.Straight(15,0.5);
+        // pipetree = pipetree.Straight(5,0.5);
+        // pipetree = pipetree.Straight(5,0.5);
+        // pipetree = pipetree.Turn(Math.PI/2, 5, 1);
+        // pipetree = pipetree.Turn(Math.PI/2, 5, -1);
+        // pipetree = pipetree.Straight(5,0);
+        // pipetree = pipetree.Straight(5,0);
+
+        var p2 = treebuilder.AddBranch(-Math.PI/4,5);
+        var p4 = treebuilder.AddBranch(-Math.PI/8,5);
+        var p3 = treebuilder.AddBranch(Math.PI/8,5);
+        var p1 = treebuilder.AddBranch(Math.PI/4,5);      
+
+        p1 = PipeTree.GenerateTrack(p1, 20);
+        p2 = PipeTree.GenerateTrack(p2, 20);
+        p3 = PipeTree.GenerateTrack(p3, 20);
+        p4 = PipeTree.GenerateTrack(p4, 20);
         
         
 
-        p1 = p1.Straight(10,0.5);
-        p1 = p1.Straight(1,-0.5);
-        p1 = p1.Turn(Math.PI/4, 5, -1);
-        p1 = p1.Straight(5,0);
-        p1 = p1.Turn(Math.PI/4, 5, -1);
-        p1 = p1.Straight(10,0.5);
+        // p1 = p1.Straight(10,0.5);
+        // p1 = p1.Straight(1,-0.5);
+        // p1 = p1.Turn(Math.PI/4, 5, -1);
+        // p1 = p1.Straight(5,0);
+        // p1 = p1.Turn(Math.PI/4, 5, -1);
+        // p1 = p1.Straight(10,0.5);
 
-        var p11 = p1.AddBranch(-Math.PI/4,5);
-        var p12 = p1.AddBranch(Math.PI/4,5); 
+        // var p11 = p1.AddBranch(-Math.PI/4,5);
+        // var p12 = p1.AddBranch(Math.PI/4,5); 
 
 
-        p11 = p11.Straight(10,-0.5);
-        p11 = p11.Turn(Math.PI/4, 5, -1);
-        p11 = p11.Straight(5,0);
-        p11 = p11.Turn(Math.PI/4, 5, -1);
-        p11 = p11.Straight(10,0.5);
+        // p11 = p11.Straight(10,-0.5);
+        // p11 = p11.Turn(Math.PI/4, 5, -1);
+        // p11 = p11.Straight(5,0);
+        // p11 = p11.Turn(Math.PI/4, 5, -1);
+        // p11 = p11.Straight(10,0.5);
 
-        p12 = p12.Straight(10,-0.5);
-        p12 = p12.Straight(1,0.5);
-        p12 = p12.Turn(Math.PI/2, 5, 1);
-        p12 = p12.Turn(Math.PI/2, 5, -1);
-        p12 = p12.Turn(Math.PI/2, 5, 1);
-        p12 = p12.Turn(Math.PI/2, 5, -1);
+        // p12 = p12.Straight(10,-0.5);
+        // p12 = p12.Straight(1,0.5);
+        // p12 = p12.Turn(Math.PI/2, 5, 1);
+        // p12 = p12.Turn(Math.PI/2, 5, -1);
+        // p12 = p12.Turn(Math.PI/2, 5, 1);
+        // p12 = p12.Turn(Math.PI/2, 5, -1);
 
-        p2 = p2.Straight(10,-0.5);
-        p2 = p2.Straight(1,0.5);
-        p2 = p2.Turn(Math.PI/2, 5, 1);
-        p2 = p2.Turn(Math.PI/2, 5, -1);
-        p2 = p2.Turn(Math.PI/2, 5, 1);
-        p2 = p2.Turn(Math.PI/2, 5, -1);
+        // p2 = p2.Straight(10,-0.5);
+        // p2 = p2.Straight(1,0.5);
+        // p2 = p2.Turn(Math.PI/2, 5, 1);
+        // p2 = p2.Turn(Math.PI/2, 5, -1);
+        // p2 = p2.Turn(Math.PI/2, 5, 1);
+        // p2 = p2.Turn(Math.PI/2, 5, -1);
 
-        p3 = p3.Straight(10,0.5);
-        p3 = p3.Straight(1,-0.5);
-        p3 = p3.Turn(Math.PI/2, 5, -1);
-        p3 = p3.Straight(5,0);
-        p3 = p3.Turn(Math.PI/2, 5, -1);
-        p3 = p3.Straight(10,0.5);
+        // p3 = p3.Straight(10,0.5);
+        // p3 = p3.Straight(1,-0.5);
+        // p3 = p3.Turn(Math.PI/2, 5, -1);
+        // p3 = p3.Straight(5,0);
+        // p3 = p3.Turn(Math.PI/2, 5, -1);
+        // p3 = p3.Straight(10,0.5);
 
-        p4 = p4.Straight(10,-0.5);
-        p4 = p4.Straight(1,0.5);
-        p4 = p4.Turn(Math.PI/2, 5, 1);
-        p4 = p4.Turn(Math.PI/2, 5, -1);
-        p4 = p4.Turn(Math.PI/2, 5, 1);
-        p4 = p4.Turn(Math.PI/2, 5, -1);
+        // p4 = p4.Straight(10,-0.5);
+        // p4 = p4.Straight(1,0.5);
+        // p4 = p4.Turn(Math.PI/2, 5, 1);
+        // p4 = p4.Turn(Math.PI/2, 5, -1);
+        // p4 = p4.Straight(12,0.0);
+        // p4 = p4.Turn(Math.PI/2, 5, -1);
+        // p2 = p2.Straight(5,0);
+        // p4.AddExisting(p2);
+
+        // p2 = p2.Straight(1,0);
+        
+        // p4 = p4.Turn(Math.PI/2, 5, 1);
+        // p4 = p4.Turn(Math.PI/2, 5, -1);
 
         var meshes:Array<Mesh> = [];
         PipeTree.GeneratePipeMeshes(this.pipeTree,meshes,scene);
