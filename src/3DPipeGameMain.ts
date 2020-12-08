@@ -11,7 +11,7 @@ class PipeTree
     public previous:PipeTree;
     public last_direction:Vector3;
     //public next_direction:Vector3;
-    public static TurnSections:number = 25;
+    public static TurnSections:number = 64;
     public static TurnStep:number = Math.PI*2/PipeTree.TurnSections;
     constructor(previous:PipeTree, point:Vector3){
 
@@ -223,8 +223,8 @@ class Environment
         var treebuilder = new PipeTree(this.pipeTree, new Vector3(0,0,2));
         this.pipeTree.branches.push(treebuilder);
         
-        treebuilder = PipeTree.GenerateTrack(treebuilder, 20);
-
+        //treebuilder = PipeTree.GenerateTrack(treebuilder, 20);
+        treebuilder = treebuilder.Straight(10,0);
 
 
         // pipetree = pipetree.Straight(15,0.5);
@@ -235,15 +235,43 @@ class Environment
         // pipetree = pipetree.Straight(5,0);
         // pipetree = pipetree.Straight(5,0);
 
-        var p2 = treebuilder.AddBranch(-Math.PI/4,5);
-        var p4 = treebuilder.AddBranch(-Math.PI/8,5);
-        var p3 = treebuilder.AddBranch(Math.PI/8,5);
-        var p1 = treebuilder.AddBranch(Math.PI/4,5);      
+        var p1 = treebuilder.AddBranch(-Math.PI/4,20);
+        var p2 = treebuilder.AddBranch(-Math.PI/10,20);
+        var p3 = treebuilder.AddBranch(Math.PI/10,20);
+        var p4 = treebuilder.AddBranch(Math.PI/4,20); 
+        
+        p1 = p1.Turn(Math.PI/4,5,1);
+        p2 = p2.Turn(Math.PI/10,5,1);
+        p3 = p3.Turn(Math.PI/10,5,-1);
+        p4 = p4.Turn(Math.PI/4,5,-1);
 
-        p1 = PipeTree.GenerateTrack(p1, 20);
-        p2 = PipeTree.GenerateTrack(p2, 20);
-        p3 = PipeTree.GenerateTrack(p3, 20);
-        p4 = PipeTree.GenerateTrack(p4, 20);
+        var t1 = p1.point;
+        p1 = p1.Straight(20,0);
+        var t2 = p1.point;
+        var tunnel = Mesh.CreateBox("box", 20, scene)
+        tunnel.position.copyFrom(t1);
+        tunnel.position.z += 15;
+        var sourceMat = new StandardMaterial("sourceMat", scene);
+        sourceMat.wireframe = false;
+        sourceMat.backFaceCulling = false;
+    
+        var bhole = MeshBuilder.CreateTube("tunnel1",{path:[t1,t2], radius:4, sideOrientation:2}, scene);
+        bhole.material = sourceMat;
+        var tcut = CSG.FromMesh(bhole);
+        var tnnl = CSG.FromMesh(tunnel);
+        tunnel.dispose();
+        bhole.dispose();
+
+        var tb = tnnl.subtract(tcut).toMesh("csg",null,scene);
+
+        p2 = p2.Straight(20,0);
+        p3 = p3.Straight(20,0);
+        p4 = p4.Straight(20,0);
+
+        // p1 = PipeTree.GenerateTrack(p1, 20);
+        // p2 = PipeTree.GenerateTrack(p2, 20);
+        // p3 = PipeTree.GenerateTrack(p3, 20);
+        // p4 = PipeTree.GenerateTrack(p4, 20);
         
         
 
@@ -379,7 +407,7 @@ class App {
             var currentPipe = environment.pipeTree
            // var target = environment.pipeBuilder.points[sectionIdx];
             var target = currentPipe.point;
-            const cameraoffset: Vector3 = new Vector3(0,10,0);
+            const cameraoffset: Vector3 = new Vector3(0,2,0);
             console.log("LOADED")
             var heading = ship.position.subtract(target).normalize().scale(-shipSpeed);
             ship.lookAt(target);
