@@ -9,18 +9,21 @@ import {  Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshB
 
 export class PipeTree
 {
-    static Material:Material;
+    
     public branches:Array<PipeTree>;
     public point:Vector3;
     public previous:PipeTree;
     public last_direction:Vector3;
     public traversed:boolean;
+    public metadata:Object;
     //public next_direction:Vector3;
+    public static Material:Material;
     public static TurnSections:number = 64;
     public static TurnStep:number = Math.PI*2/PipeTree.TurnSections;
     constructor(previous:PipeTree, point:Vector3){
         this.traversed =false;
         this.branches = [];
+        this.metadata = {};
         this.previous = previous;
         this.point = point;
         if(this.previous!==undefined){
@@ -234,26 +237,28 @@ export class PipeTree
 export class TrackUtils{
 
     static NINETYDEG = Math.PI/2;
-    static FOURTYFIVEDEV = Math.PI/4;
+    static FOURTYFIVEDEG = Math.PI/4;
+    static EIGHTHPI = Math.PI/8;
     constructor(){
 
     }
     static CreateTunnel(pipetree:PipeTree, scene:Scene, tunnelLength:number, tunnelMaterial:Material, segmentCallback?:Function):[Array<PipeTree>, Mesh,[Vector3, Vector3]]{
-        var t1 = pipetree.point;
-        var t2 = pipetree.GetPointStraight(tunnelLength/2+21,0);
+        const halftunnel = tunnelLength/2;
+        //var t1 = pipetree.point;
+        var t2 = pipetree.GetPointStraight(halftunnel+21,0);
         let branches:Array<PipeTree> =[];
-        var tunnel = MeshBuilder.CreateBox("box", {width:tunnelLength*0.9, height:10, depth:tunnelLength*0.9}, scene);
+        var tunnel = MeshBuilder.CreateBox("box", {width:tunnelLength*0.9, height:30, depth:tunnelLength*0.9}, scene);
         
         tunnel.position.copyFrom(t2);
         var tnnl = CSG.FromMesh(tunnel);
         tunnel.dispose();
-        let angle = -TrackUtils.FOURTYFIVEDEV;
+        let angle = -TrackUtils.FOURTYFIVEDEG;
         for(var b=0;b<4;b++){
-            let branch = pipetree.AddBranch(angle,20)
+            let branch = pipetree.AddBranch(angle,20);
             segmentCallback(branch);
             branch = branch.Turn(Math.abs(angle),5,angle<0?1:-1,segmentCallback);
-            angle+=Math.PI/8;
-            if(Math.abs(angle)<0.001){angle=Math.PI/8;}
+            angle+=TrackUtils.EIGHTHPI;
+            if(Math.abs(angle)<0.001){angle=TrackUtils.EIGHTHPI;}
             let tunnelEnd:Vector3 = branch.GetPointStraight(tunnelLength,0);
             var holemesh = MeshBuilder.CreateTube("hole",{path:[branch.point,tunnelEnd], radius:3, sideOrientation:2}, scene);
             var cutter = CSG.FromMesh(holemesh);
@@ -265,11 +270,11 @@ export class TrackUtils{
             branches.push(branch);
         }
         let corner1:Vector3 = tunnel.position.clone();
-        corner1.x -= tunnelLength/2;
-        corner1.z -= tunnelLength/2;
+        corner1.x -= halftunnel;
+        corner1.z -= halftunnel;
         let corner2:Vector3 = tunnel.position.clone();
-        corner2.x += tunnelLength/2;
-        corner2.z += tunnelLength/2;
+        corner2.x += halftunnel;
+        corner2.z += halftunnel;
         return [branches, tnnl.toMesh("decisionTunnel", tunnelMaterial, scene),[corner1, corner2]];
     }
 }

@@ -2,7 +2,7 @@ import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 import "@babylonjs/loaders/glTF";
 import {AdvancedDynamicTexture, Button} from "@babylonjs/gui";
-import {  Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, SceneLoader, FollowCamera, Material, StandardMaterial, Color3, Matrix, Axis, CSG, Texture, CubeTexture, FreeCamera, VertexBuffer, FloatArray, DirectionalLight, ShadowGenerator } from "@babylonjs/core";
+import {  Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, SceneLoader, FollowCamera, Material, StandardMaterial, Color3, Matrix, Axis, CSG, Texture, CubeTexture, FreeCamera, VertexBuffer, FloatArray, DirectionalLight, ShadowGenerator, PointLight } from "@babylonjs/core";
 
 import { PipeTree, TrackUtils } from "./TrackBuilder"
 
@@ -142,6 +142,8 @@ class Environment
 
         const tunnelMaterial = new StandardMaterial("tunnelmat", scene);
         tunnelMaterial.diffuseColor = new Color3(0,0.1, 0.5);
+
+        tunnelMaterial.specularColor = new Color3(1,1, 1);
         const trackmat = new StandardMaterial("track", scene);
         trackmat.diffuseColor = new Color3(0.2,0.2, 0.2);
         //tunnelMaterial.specularColor = new Color3(0, 150, 0);
@@ -293,8 +295,10 @@ class Environment
             })
             var branches:Array<PipeTree>;
             var tunnelpoints:Array<Vector3>;
-            [branches,,tunnelpoints] = TrackUtils.CreateTunnel(treebuilder, scene,100, tunnelMaterial,(seg)=>{updateHeight(seg.point.x/10, seg.point.z/10, 160, seg.point.y, gbuff)});
+            [branches,,tunnelpoints] = TrackUtils.CreateTunnel(treebuilder, scene,150, tunnelMaterial,(seg)=>{updateHeight(seg.point.x/10, seg.point.z/10, 160, seg.point.y, gbuff)});
+            branches.forEach((br)=>{br.metadata["closecamera"]=true;})
             treebuilder = PipeTree.JoinPipes(branches,treebuilder.GetPointStraight(200,0), treebuilder.last_direction);
+            treebuilder.metadata["closecamera"]=false;
             updateHeight(treebuilder.point.x/10, treebuilder.point.z/10, 160, treebuilder.point.y, gbuff);
             for(let tx=tunnelpoints[0].x/10;tx<tunnelpoints[1].x/10;tx++){
                 for(let zx=tunnelpoints[0].z/10-2;zx<tunnelpoints[1].z/10+10;zx++){
@@ -404,17 +408,23 @@ class App {
         }
 
         var light1: HemisphericLight = new HemisphericLight("light1", new Vector3(1, 1, 0), scene);
+        var testlight:PointLight = new PointLight("testlight",camera.position,scene);
+        testlight.diffuse = new Color3(1,0,0);
+        testlight.specular = new Color3(1,0,0);
         var sphere: Mesh = MeshBuilder.CreateSphere("sphere", { diameter: 1 }, scene);
         SceneLoader.ImportMesh(null, "./", "Ship.glb",scene,(meshes)=>{
             const ship:Mesh = meshes[0];
             const shipSpeed = 0.5;
             ship.position = new Vector3(0,0,-5);
             var lastposition = ship.position.clone();
+            testlight.position=ship.position;
+            testlight.setEnabled(false);
             //var sectionIdx=0;
             var currentPipe = environment.pipeTree
            // var target = environment.pipeBuilder.points[sectionIdx];
             var target = currentPipe.point;
             const cameraoffset: Vector3 = new Vector3(0,5,0);
+            var camerarearoffset = -20;
             console.log("LOADED")
             var heading = ship.position.subtract(target).normalize().scale(-shipSpeed);
             ship.lookAt(target);
@@ -429,7 +439,7 @@ class App {
             }
 
             scene.registerBeforeRender(()=>{
-                Vector3.LerpToRef(camera.position, (ship.position.subtract(ship.forward.scale(-20)).add(cameraoffset)), 0.05, camera.position );
+                Vector3.LerpToRef(camera.position, (ship.position.subtract(ship.forward.scale(camerarearoffset)).add(cameraoffset)), 0.05, camera.position );
                 camera.setTarget(ship.position);
                 if(!ship_paused){
                     ship.position.addInPlace(heading);
@@ -443,8 +453,8 @@ class App {
                         else if(currentPipe.branches.length>1 && currentBranch!==-1)
                         {
                             currentPipe = currentPipe.branches[currentBranch];
-                            console.log(currentPipe);
-                            console.log(currentBranch);
+                            //console.log(currentPipe);
+                            //console.log(currentBranch);
                             currentBranch = -1;
                             branch_buttons.forEach(btn=>gui_window.removeControl(btn));
                             branch_buttons = [];
@@ -454,6 +464,15 @@ class App {
                             currentPipe = currentPipe.branches[0];
                         }
                         if(currentPipe===undefined) currentPipe = environment.pipeTree;
+                        if(currentPipe.metadata["closecamera"]===true){
+                            cameraoffset.y=1;
+                            camerarearoffset= -10;
+                            testlight.setEnabled(true);
+                        }else if(currentPipe.metadata["closecamera"]===false){
+                            cameraoffset.y=5;
+                            camerarearoffset=-20;
+                            testlight.setEnabled(false);
+                        }
                         target = currentPipe.point;
                         //console.log(target);
                         ship.lookAt(target);
