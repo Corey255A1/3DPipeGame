@@ -4,26 +4,8 @@ import "@babylonjs/loaders/glTF";
 import {AdvancedDynamicTexture, Button} from "@babylonjs/gui";
 import {  Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, SceneLoader, FollowCamera, Material, StandardMaterial, Color3, Matrix, Axis, CSG, Texture, CubeTexture, FreeCamera, VertexBuffer, FloatArray, DirectionalLight, ShadowGenerator, PointLight } from "@babylonjs/core";
 
-import { PipeTree, TrackUtils } from "./TrackBuilder"
+import { PipeTree, TrackUtils, Tunnel, Point3D, Move, Track } from "./TrackBuilder"
 
-class Point3D{
-    public x:number;
-    public y:number;
-    public z:number;
-    constructor(x,y,z){
-        this.x=x;
-        this.y=y;
-        this.z=z;
-    }
-}
-class Move{
-    public point:Point3D;
-    public move:number;
-    constructor(move:number, point:Point3D){
-        this.move = move;
-        this.point = point;
-    }
-}
 
 class MapNavi{
     public point:Point3D;
@@ -123,14 +105,10 @@ class MapNavi{
 
 class Environment
 {
-    public ground: Mesh;
-    public pipe1: Mesh;
-    public pipe2: Mesh;
-    public pipeTree:PipeTree;
     public skybox: Mesh;
+    public track:Track;
     constructor(scene:Scene){
         
-
         this.skybox = MeshBuilder.CreateBox("skyBox", {width:1600,height:6400, depth:3200}, scene);
         const skyboxMaterial = new StandardMaterial("skyBox", scene);
         skyboxMaterial.backFaceCulling = false;
@@ -139,21 +117,6 @@ class Environment
         skyboxMaterial.diffuseColor = new Color3(0, 0, 0);
         skyboxMaterial.specularColor = new Color3(0, 0, 0);
         this.skybox.material = skyboxMaterial;
-
-        const tunnelMaterial = new StandardMaterial("tunnelmat", scene);
-        tunnelMaterial.diffuseColor = new Color3(0,0.1, 0.5);
-
-        tunnelMaterial.specularColor = new Color3(1,1, 1);
-        const trackmat = new StandardMaterial("track", scene);
-        trackmat.diffuseColor = new Color3(0.2,0.2, 0.2);
-        //tunnelMaterial.specularColor = new Color3(0, 150, 0);
-
-
-        //var pipePoints: Array<Vector3> = [new Vector3(0,0,0), new Vector3(0,1,0), new Vector3(0,2,1), new Vector3(0,2,2), new Vector3(0,2,700)];
-        PipeTree.Material = trackmat;
-        this.pipeTree = new PipeTree(undefined, new Vector3(0,0,0))
-        var treebuilder = new PipeTree(this.pipeTree, new Vector3(0,0,2));
-        this.pipeTree.branches.push(treebuilder);
 
 
         const direction_randomizer_params = {
@@ -182,49 +145,12 @@ class Environment
         
         //Generate the Map... To Be Done Server Side Eventually
         const max_movements = 10;
-        var Meshes:Array<Mesh> = []
 
-        // const setPoint = function(x:number,y:number,width:number,imagedata:ImageData, value:number){
-        //     const red = y * (width * 4) + x * 4;
-        //     imagedata[red] = value;
-        //     imagedata[red+1] = value;
-        //     imagedata[red+2] = value;
-        //     imagedata[red+3] = 1;
-        // }
-        var ground =MeshBuilder.CreateGround("g",{width:1600,height:6400,subdivisionsX:159,subdivisionsY:639,updatable:true}, scene);
-        var gbuff = ground.getVerticesData(VertexBuffer.PositionKind);
-        for(let gheight=1;gheight<gbuff.length;gheight+=3){
-            gbuff[gheight] = Math.random()*80;
-        }
-        ground.position.z += 3000;
-        ground.position.y -= 5;
-        ground.rotation.y = Math.PI;
-        const updateHeight = function(x:number, y:number, width:number, z:number, buff:FloatArray){
-            //[0]=x [1]=y(Elevation) [2]=z
-            y=y+20;
-            const fz = Math.floor(z);
-            console.log(fz)
-            const w2 = width/2;
-            const w3 = width*3;
-            for(let hx=x-3;hx<x+1;hx++){
-                for(let hy=y-2;hy<y+2;hy++){
-                   let idx = (1+3*(Math.floor(w2 - hx-1))) + Math.floor(hy)*w3;
-                   if(idx>0 && idx<buff.length){
-                    buff[idx] = fz;
-                   }
-                }
-
-            }
-        }
+        let navis:Array<Array<Move>> = [];
         for(let landmark=0;landmark<5;landmark++)
         {
             //Generate Intermediate Track
             let navi = new MapNavi(16,64,8,0,0);
-            // const heightmap = document.createElement("canvas");
-            // const heightmapctx = heightmap.getContext("2d");
-            // heightmap.height = 64;
-            // heightmap.width = 16;
-            // var imagedata = heightmapctx.getImageData(0,0,16,64);
 
             for(let p=0;p<max_movements;p++){
                 let ranmove = Math.random();
@@ -277,68 +203,21 @@ class Environment
                     else if(navi.TestDirection(-1)){navi.Move(-1);navi.Move(-1);} 
             }
             navi.Move(0)
-
-            //Generate the Pipe Track from the map
-
-            navi.moves.forEach((move)=>{
-                //setPoint(move.point.x, move.point.y, 16, imagedata, move.point.z/8);
-                console.log(treebuilder.point);
-                updateHeight(treebuilder.point.x/10, treebuilder.point.z/10, 160, treebuilder.point.y, gbuff);
-
-                switch(move.move){
-                    case 0:treebuilder = treebuilder.Straight(10,0); break;
-                    case 1: treebuilder = treebuilder.Turn(TrackUtils.NINETYDEG,10,1,(seg)=>{updateHeight(seg.point.x/10, seg.point.z/10, 160, seg.point.y, gbuff)}); break;
-                    case -1: treebuilder = treebuilder.Turn(TrackUtils.NINETYDEG,10,-1,(seg)=>{updateHeight(seg.point.x/10, seg.point.z/10, 160, seg.point.y, gbuff)}); break;
-                    case 5: treebuilder = treebuilder.Straight(5,0.5);treebuilder = treebuilder.Straight(1,-0.5); break
-                    case 6: treebuilder = treebuilder.Straight(5,-0.5);treebuilder = treebuilder.Straight(1,0.5); break;
-                }
-            })
-            var branches:Array<PipeTree>;
-            var tunnelpoints:Array<Vector3>;
-            [branches,,tunnelpoints] = TrackUtils.CreateTunnel(treebuilder, scene,150, tunnelMaterial,(seg)=>{updateHeight(seg.point.x/10, seg.point.z/10, 160, seg.point.y, gbuff)});
-            branches.forEach((br)=>{br.metadata["closecamera"]=true;})
-            treebuilder = PipeTree.JoinPipes(branches,treebuilder.GetPointStraight(200,0), treebuilder.last_direction);
-            treebuilder.metadata["closecamera"]=false;
-            updateHeight(treebuilder.point.x/10, treebuilder.point.z/10, 160, treebuilder.point.y, gbuff);
-            for(let tx=tunnelpoints[0].x/10;tx<tunnelpoints[1].x/10;tx++){
-                for(let zx=tunnelpoints[0].z/10-2;zx<tunnelpoints[1].z/10+10;zx++){
-                    updateHeight(tx, zx, 160, tunnelpoints[0].y, gbuff);
-                }
-            }
-
-            // heightmapctx.putImageData(imagedata,0,0);
-            // const igm = heightmap.toDataURL("image/png");
-            // console.log(igm);
-            // this.ground = MeshBuilder.CreateGroundFromHeightMap("ground",igm, {width:1600, height:6400, maxHeight:80, subdivisions:4}, scene);
-            // this.ground.position.z = 0;
-            // this.ground.rotate(new Vector3(1,0,0),TrackUtils.NINETYDEG);
-            // var groundMat:StandardMaterial = new StandardMaterial("groundMat", scene);
-            // groundMat.diffuseColor = new Color3(0,1,0);
-            // this.ground.material = groundMat;
-            //Meshes.push(Mesh.MergeMeshes(meshes, true));
+            navis.push(navi.moves);
         }
-        var meshes:Array<Mesh> = [];
-        PipeTree.GeneratePipeMeshes(this.pipeTree,meshes,scene);
-        console.log("meshes " + meshes.length);
-        ground.updateVerticesData(VertexBuffer.PositionKind, gbuff);
+        
+        this.track = new Track(navis, scene);
+        
+        var light1: HemisphericLight = new HemisphericLight("light1", new Vector3(1, 1, 0), scene);
+        // var light = new DirectionalLight("dir01", new Vector3(-1, -2, -1), scene);
+        // light.position = new Vector3(800, 100, 3200);
+        // light.intensity = 0.1;
+        // light.diffuse = new Color3(1, 1, 1);
+        // light.setDirectionToTarget(new Vector3(800,0,3200));
 
-        var light = new DirectionalLight("dir01", new Vector3(-1, -2, -1), scene);
-        light.position = new Vector3(0, 10, 0);
-        light.intensity = 200;
-        light.diffuse = new Color3(0, 0, 0);
-        light.setDirectionToTarget(new Vector3(0,0,0));
 
-
-        var groundMat:StandardMaterial = new StandardMaterial("groundMat", scene);
-        groundMat.diffuseColor = new Color3(0,0.5,0);
-        groundMat.specularColor = new Color3(0,0,0);
-        ground.material = groundMat;
-        ground.convertToFlatShadedMesh();
-        var shadowGenerator = new ShadowGenerator(1024, light);
-        shadowGenerator.getShadowMap().renderList.push(ground);
-        ground.receiveShadows = true;
-
-        //this.ground = MeshBuilder.CreatePlane("ground", {width:1600, height:6400}, scene);
+        // var shadowGenerator = new ShadowGenerator(1024, light);
+        // shadowGenerator.getShadowMap().renderList.push(this.track.ground);
 
     }
 
@@ -407,7 +286,7 @@ class App {
             return btns;
         }
 
-        var light1: HemisphericLight = new HemisphericLight("light1", new Vector3(1, 1, 0), scene);
+        
         var testlight:PointLight = new PointLight("testlight",camera.position,scene);
         testlight.diffuse = new Color3(1,0,0);
         testlight.specular = new Color3(1,0,0);
@@ -420,7 +299,7 @@ class App {
             testlight.position=ship.position;
             testlight.setEnabled(false);
             //var sectionIdx=0;
-            var currentPipe = environment.pipeTree
+            var currentPipe = environment.track.pipe_start;
            // var target = environment.pipeBuilder.points[sectionIdx];
             var target = currentPipe.point;
             const cameraoffset: Vector3 = new Vector3(0,5,0);
@@ -463,7 +342,7 @@ class App {
                         {
                             currentPipe = currentPipe.branches[0];
                         }
-                        if(currentPipe===undefined) currentPipe = environment.pipeTree;
+                        if(currentPipe===undefined) currentPipe = environment.track.pipe_start;
                         if(currentPipe.metadata["closecamera"]===true){
                             cameraoffset.y=1;
                             camerarearoffset= -10;
