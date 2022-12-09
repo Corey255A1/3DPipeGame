@@ -36,7 +36,7 @@ export class PipeGameMain {
         var ship_paused: boolean = true;
         var gui_window = AdvancedDynamicTexture.CreateFullscreenUI("options");
 
-        var start_button = Button.CreateSimpleButton("start_button", "Start!");
+        var start_button = Button.CreateSimpleButton("startButton", "Start!");
         start_button.width = "150px"
         start_button.height = "40px";
         start_button.color = "white";
@@ -79,7 +79,7 @@ export class PipeGameMain {
         test_light.diffuse = new Color3(1, 0, 0);
         test_light.specular = new Color3(1, 0, 0);
         var sphere: Mesh = MeshBuilder.CreateSphere("sphere", { diameter: 1 }, this._scene);
-        SceneLoader.ImportMesh(null, "/models/", "Ship.glb", this._scene, (meshes) => {
+        SceneLoader.ImportMesh(null, "./models/", "Ship.glb", this._scene, (meshes) => {
             const ship: Mesh = meshes[0] as Mesh;
             const ship_speed = 0.5;
             ship.position = new Vector3(0, 0, -5);
