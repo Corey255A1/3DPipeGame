@@ -1,4 +1,8 @@
-import { Mesh, Scene, MeshBuilder, StandardMaterial, CubeTexture, Texture, Color3, HemisphericLight, Vector3 } from "@babylonjs/core";
+import { Mesh, Scene, MeshBuilder, 
+    StandardMaterial, CubeTexture, 
+    Texture, Color3, HemisphericLight, 
+    Vector3 } from "@babylonjs/core";
+import "@babylonjs/loaders";
 import { MapNavigation } from "./MapNavigation";
 import { Move } from "./trackbuilder/Move";
 import { Track } from "./trackbuilder/Track";
@@ -11,7 +15,7 @@ export class Environment {
         this._skybox = MeshBuilder.CreateBox("skyBox", { width: 1600, height: 6400, depth: 3200 }, scene);
         const skyboxMaterial = new StandardMaterial("skyBox", scene);
         skyboxMaterial.backFaceCulling = false;
-        skyboxMaterial.reflectionTexture = new CubeTexture("imgs/skybox", scene);
+        skyboxMaterial.reflectionTexture = new CubeTexture("/imgs/skybox", scene);
         skyboxMaterial.reflectionTexture.coordinatesMode = Texture.SKYBOX_MODE;
         skyboxMaterial.diffuseColor = new Color3(0, 0, 0);
         skyboxMaterial.specularColor = new Color3(0, 0, 0);

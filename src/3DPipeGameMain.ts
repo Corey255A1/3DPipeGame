@@ -19,6 +19,9 @@ export class PipeGameMain {
         this._engine = new Engine(this._canvas, true);
         this._scene = new Scene(this._engine);
 
+        window.addEventListener('resize', () => { this._engine.resize(); })
+
+
         //var camera: ArcRotateCamera = new ArcRotateCamera("Camera", Math.PI / 2, Math.PI / 2, 15, Vector3.Zero(), scene);
         this._camera = new FreeCamera("thirdperson", new Vector3(0, 1, -3), this._scene);
         //var camera2: FollowCamera = new FollowCamera("FollowCamera", new Vector3(0,10,0), scene);
@@ -73,7 +76,7 @@ export class PipeGameMain {
         test_light.diffuse = new Color3(1, 0, 0);
         test_light.specular = new Color3(1, 0, 0);
         var sphere: Mesh = MeshBuilder.CreateSphere("sphere", { diameter: 1 }, this._scene);
-        SceneLoader.ImportMesh(null, "./", "Ship.glb", this._scene, (meshes) => {
+        SceneLoader.ImportMesh(null, "/models/", "Ship.glb", this._scene, (meshes) => {
             const ship: Mesh = meshes[0] as Mesh;
             const ship_speed = 0.5;
             ship.position = new Vector3(0, 0, -5);
