@@ -1,17 +1,20 @@
+//Corey Wunderlich 2022
+//https://www.wundervisionenvisionthefuture.com/
+
 import { Engine, Scene, FreeCamera, Vector3, PointLight, Color3, Mesh, MeshBuilder, SceneLoader } from "@babylonjs/core";
 import { AdvancedDynamicTexture, Button } from "@babylonjs/gui";
 import { Environment } from "./Environment";
 
 export class PipeGameMain {
-    private _canvas:HTMLCanvasElement;
-    private _engine:Engine;
-    private _scene:Scene;
-    private _camera:FreeCamera;
-    private _environment:Environment;
-    constructor(canvas_name:string) {
+    private _canvas: HTMLCanvasElement;
+    private _engine: Engine;
+    private _scene: Scene;
+    private _camera: FreeCamera;
+    private _environment: Environment;
+    constructor(canvas_name: string) {
         // create the canvas html element and attach it to the webpage
         const element = document.getElementById(canvas_name);
-        if(element == null) { throw "No Canvas Found"; }
+        if (element == null) { throw "No Canvas Found"; }
 
         this._canvas = element as HTMLCanvasElement;
 

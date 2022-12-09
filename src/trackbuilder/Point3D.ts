@@ -1,3 +1,6 @@
+//Corey Wunderlich 2022
+//https://www.wundervisionenvisionthefuture.com/
+
 export class Point3D {
     public x: number;
     public y: number;

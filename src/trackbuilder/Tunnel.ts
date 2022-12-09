@@ -1,3 +1,6 @@
+//Corey Wunderlich 2022
+//https://www.wundervisionenvisionthefuture.com/
+
 import { Vector3, Mesh, PointLight, Material, Scene, MeshBuilder, CSG } from "@babylonjs/core";
 import { PipeTree } from "./PipeTree";
 import { TrackUtils } from "./TrackUtils";
@@ -13,7 +16,7 @@ export class Tunnel {
     private _branch_ends: Array<PipeTree>;
     private _branch_lights: Array<PointLight>;
     private _material: Material;
-    
+
     constructor(number_of_branches: number, pipe_tree: PipeTree, scene: Scene, tunnel_length: number, tunnel_material: Material, segment_callback: (tree: PipeTree) => void) {
         this._length = tunnel_length;
         this._width = tunnel_length;

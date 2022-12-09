@@ -1,3 +1,6 @@
+//Corey Wunderlich 2022
+//https://www.wundervisionenvisionthefuture.com/
+
 import { Move } from "./trackbuilder/Move";
 import { Point3D } from "./trackbuilder/Point3D";
 
@@ -10,7 +13,7 @@ export class MapNavigation {
     public depth: number;
     public map: Array<Array<Array<number>>>;
     public moves: Array<Move>;
-    constructor(width:number, height:number, x:number, y:number, z:number) {
+    constructor(width: number, height: number, x: number, y: number, z: number) {
         this.point = new Point3D(x, y, z);
         this.startingPoint = this.point;
         this.width = width;

@@ -1,3 +1,6 @@
+//Corey Wunderlich 2022
+//https://www.wundervisionenvisionthefuture.com/
+
 import { Point3D } from "./Point3D";
 
 export class Move {

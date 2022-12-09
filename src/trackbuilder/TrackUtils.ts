@@ -1,3 +1,6 @@
+//Corey Wunderlich 2022
+//https://www.wundervisionenvisionthefuture.com/
+
 import { Scene, Material, Mesh, Vector3, MeshBuilder, CSG } from "@babylonjs/core";
 import { PipeTree } from "./PipeTree";
 
@@ -6,7 +9,7 @@ export class TrackUtils {
     public static NINETYDEG = Math.PI / 2;
     public static FOURTYFIVEDEG = Math.PI / 4;
     public static EIGHTHPI = Math.PI / 8;
-    
+
     constructor() {
 
     }

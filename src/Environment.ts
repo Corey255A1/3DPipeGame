@@ -1,7 +1,12 @@
-import { Mesh, Scene, MeshBuilder, 
-    StandardMaterial, CubeTexture, 
-    Texture, Color3, HemisphericLight, 
-    Vector3 } from "@babylonjs/core";
+//Corey Wunderlich 2022
+//https://www.wundervisionenvisionthefuture.com/
+
+import {
+    Mesh, Scene, MeshBuilder,
+    StandardMaterial, CubeTexture,
+    Texture, Color3, HemisphericLight,
+    Vector3
+} from "@babylonjs/core";
 import "@babylonjs/loaders";
 import { MapNavigation } from "./MapNavigation";
 import { Move } from "./trackbuilder/Move";
@@ -130,7 +135,7 @@ export class Environment {
 
     }
 
-    public get Track():Track{
+    public get Track(): Track {
         return this._track;
     }
 

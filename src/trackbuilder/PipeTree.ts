@@ -1,3 +1,6 @@
+//Corey Wunderlich 2022
+//https://www.wundervisionenvisionthefuture.com/
+
 import { Vector3, Material, Matrix, Axis, Mesh, Scene, MeshBuilder } from "@babylonjs/core";
 import { TrackUtils } from "./TrackUtils";
 
