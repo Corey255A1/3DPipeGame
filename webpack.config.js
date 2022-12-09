@@ -1,24 +1,32 @@
-const path = require("path");
-const fs = require('fs');
-const appDirectory = fs.realpathSync(process.cwd());
-
+const path = require('path');
 module.exports = {
-    entry: path.resolve(appDirectory, "src/3DPipeGameMain.ts"), //path to the main .ts file
+    entry: {
+        PipeGame:'./src/3DPipeGameMain.ts'
+    },
     output: {
-        path:__dirname + '/public/',
-        filename: 'js/3DPipeGameMain.js' //name for the javascript file that is created/compiled in memory
+        path: path.resolve(__dirname, 'public/scripts/'),
+        filename: '[name].js',
+        library: '[name]',
     },
     resolve: {
-        extensions: [".tsx", ".ts", ".js"]
+        extensions: ['.ts', '.tsx', '.js']
     },
+    devtool: 'source-map',
+    plugins: [
+
+    ],
+    devServer: {
+        static:{
+            directory: "./public"
+        },
+        hot: false
+    },
+    mode:'development',
     module: {
-        rules: [
-            {
-              test: /\.tsx?$/,
-              use: "ts-loader",
-              exclude: /node_modules/
-            },
-        ]
-    },
-    mode: "development"
-};
+        rules: [{
+            test: /\.tsx?$/,
+            loader: 'ts-loader',
+            exclude: /node_modules/
+        }]
+    }
+}
